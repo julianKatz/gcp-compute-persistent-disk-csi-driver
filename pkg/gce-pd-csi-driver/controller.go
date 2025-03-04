@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	neturl "net/url"
+	goslices "slices"
 	"sort"
 	"strings"
 	"time"
@@ -2255,6 +2256,9 @@ func pickZonesFromTopology(top *csi.TopologyRequirement, numZones int, locationT
 	zones := make([]string, 0, numZones)
 	zones = append(zones, prefZones...)
 	zones = append(zones, sortedShiftedReqZones...)
+
+	// To induce incorrect behavior, put the list in reverse order
+	goslices.Reverse(zones)
 	return zones[:numZones], nil
 }
 

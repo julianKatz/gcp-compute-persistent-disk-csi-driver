@@ -2223,6 +2223,8 @@ func pickZonesFromTopology(top *csi.TopologyRequirement, numZones int, locationT
 	}
 
 	if numZones <= len(prefZones) {
+		// Reverse the list to induce incorrect behavior
+		goslices.Reverse(prefZones)
 		return prefZones[0:numZones], nil
 	}
 
@@ -2256,9 +2258,6 @@ func pickZonesFromTopology(top *csi.TopologyRequirement, numZones int, locationT
 	zones := make([]string, 0, numZones)
 	zones = append(zones, prefZones...)
 	zones = append(zones, sortedShiftedReqZones...)
-
-	// To induce incorrect behavior, put the list in reverse order
-	goslices.Reverse(zones)
 	return zones[:numZones], nil
 }
 

@@ -12,6 +12,12 @@
         "advisorynotifications": {
             "component": "advisorynotifications"
         },
+        "ai": {
+            "component": "ai"
+        },
+        "aiplatform": {
+            "component": "aiplatform"
+        },
         "alloydb": {
             "component": "alloydb"
         },
@@ -26,6 +32,9 @@
         },
         "apigeeregistry": {
             "component": "apigeeregistry"
+        },
+        "apihub": {
+            "component": "apihub"
         },
         "apikeys": {
             "component": "apikeys"
@@ -153,6 +162,9 @@
         "deploy": {
             "component": "deploy"
         },
+        "developerconnect": {
+            "component": "developerconnect"
+        },
         "dialogflow": {
             "component": "dialogflow"
         },
@@ -234,6 +246,9 @@
         "managedidentities": {
             "component": "managedidentities"
         },
+        "managedkafka": {
+            "component": "managedkafka"
+        },
         "maps": {
             "component": "maps"
         },
@@ -242,6 +257,9 @@
         },
         "memcache": {
             "component": "memcache"
+        },
+        "memorystore": {
+            "component": "memorystore"
         },
         "metastore": {
             "component": "metastore"
@@ -264,11 +282,17 @@
         "networksecurity": {
             "component": "networksecurity"
         },
+        "networkservices": {
+            "component": "networkservices"
+        },
         "notebooks": {
             "component": "notebooks"
         },
         "optimization": {
             "component": "optimization"
+        },
+        "oracledatabase": {
+            "component": "oracledatabase"
         },
         "orchestration": {
             "component": "orchestration"
@@ -285,6 +309,9 @@
         "parallelstore": {
             "component": "parallelstore"
         },
+        "parametermanager": {
+            "component": "parametermanager"
+        },
         "phishingprotection": {
             "component": "phishingprotection"
         },
@@ -296,6 +323,9 @@
         },
         "privatecatalog": {
             "component": "privatecatalog"
+        },
+        "privilegedaccessmanager": {
+            "component": "privilegedaccessmanager"
         },
         "rapidmigrationassessment": {
             "component": "rapidmigrationassessment"

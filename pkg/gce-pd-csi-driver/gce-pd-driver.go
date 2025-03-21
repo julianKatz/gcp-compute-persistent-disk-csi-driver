@@ -162,10 +162,10 @@ func NewNodeServer(gceDriver *GCEDriver, mounter *mount.SafeFormatAndMount, devi
 	}
 }
 
-func NewControllerServer(gceDriver *GCEDriver, cloudProvider gce.GCECompute, errorBackoffInitialDuration, errorBackoffMaxDuration time.Duration, fallbackRequisiteZones []string, enableStoragePools bool, enableDataCache bool, multiZoneVolumeHandleConfig MultiZoneVolumeHandleConfig, listVolumesConfig ListVolumesConfig, provisionableDisksConfig ProvisionableDisksConfig, enableHdHA bool, args *GCEControllerServerArgs) *GCEControllerServer {
+func NewControllerServer(gceDriver *GCEDriver, computeProvider gce.GCECompute, errorBackoffInitialDuration, errorBackoffMaxDuration time.Duration, fallbackRequisiteZones []string, enableStoragePools bool, enableDataCache bool, multiZoneVolumeHandleConfig MultiZoneVolumeHandleConfig, listVolumesConfig ListVolumesConfig, provisionableDisksConfig ProvisionableDisksConfig, enableHdHA bool, args *GCEControllerServerArgs) *GCEControllerServer {
 	return &GCEControllerServer{
 		Driver:                      gceDriver,
-		CloudProvider:               cloudProvider,
+		ComputeProvider:             computeProvider,
 		volumeEntriesSeen:           map[string]int{},
 		volumeLocks:                 common.NewVolumeLocks(),
 		errorBackoff:                newCsiErrorBackoff(errorBackoffInitialDuration, errorBackoffMaxDuration),
@@ -177,6 +177,7 @@ func NewControllerServer(gceDriver *GCEDriver, cloudProvider gce.GCECompute, err
 		provisionableDisksConfig:    provisionableDisksConfig,
 		enableHdHA:                  enableHdHA,
 		EnableDiskTopology:          args.EnableDiskTopology,
+		ContainerProvider:           args.ContainerProvider,
 	}
 }
 

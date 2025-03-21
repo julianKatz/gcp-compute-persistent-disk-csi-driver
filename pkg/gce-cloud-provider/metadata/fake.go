@@ -21,10 +21,12 @@ type fakeServiceManager struct{}
 var _ MetadataService = &fakeServiceManager{}
 
 var (
-	FakeMachineType = "n1-standard-1"
-	FakeZone        = "country-region-zone"
-	FakeProject     = "test-project"
-	FakeName        = "test-name"
+	FakeMachineType     = "n1-standard-1"
+	FakeZone            = "country-region-zone"
+	FakeProject         = "test-project"
+	FakeName            = "test-name"
+	FakeClusterLocation = "us-central1"
+	FakeClusterName     = "test-cluster"
 )
 
 func NewFakeService() MetadataService {
@@ -47,6 +49,14 @@ func (manager *fakeServiceManager) GetMachineType() string {
 	return FakeMachineType
 }
 
+func (manager *fakeServiceManager) GetClusterLocation() string {
+	return FakeClusterLocation
+}
+
+func (manager *fakeServiceManager) GetClusterName() string {
+	return FakeClusterName
+}
+
 func SetMachineType(s string) {
 	FakeMachineType = s
 }
@@ -57,4 +67,12 @@ func SetZone(s string) {
 
 func SetName(s string) {
 	FakeName = s
+}
+
+func SetClusterLocation(s string) {
+	FakeClusterLocation = s
+}
+
+func SetClusterName(s string) {
+	FakeClusterName = s
 }

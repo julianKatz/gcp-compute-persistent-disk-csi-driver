@@ -33,7 +33,9 @@ import (
 	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/common"
 	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/deviceutils"
+	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-cloud-provider/auth"
 	gce "sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-cloud-provider/compute"
+	gke "sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-cloud-provider/container"
 	metadataservice "sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-cloud-provider/metadata"
 	driver "sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-pd-csi-driver"
 	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/metrics"
@@ -222,19 +224,39 @@ func handle() {
 		SupportsThroughputChange: supportsThroughputChange,
 	}
 
+	mdService, err := metadataservice.NewMetadataService()
+	if err != nil {
+		klog.Fatalf("Failed to set up metadata service: %v", err.Error())
+	}
+
 	// Initialize requirements for the controller service
 	var controllerServer *driver.GCEControllerServer
 	if *runControllerService {
-		cloudProvider, err := gce.CreateCloudProvider(ctx, version, *cloudConfigFilePath, computeEndpoint, computeEnvironment, waitForAttachConfig, listInstancesConfig)
+		// Ingest the config file for use across services.
+		conf, err := auth.ConfigFromFile(ctx, *cloudConfigFilePath, mdService)
 		if err != nil {
-			klog.Fatalf("Failed to get cloud provider: %v", err.Error())
+			klog.Fatalf("Failed to create token source: %v", err.Error())
 		}
+
+		computeProvider, err := gce.CreateComputeProvider(ctx, version, conf, computeEndpoint, computeEnvironment, waitForAttachConfig, listInstancesConfig)
+		if err != nil {
+			klog.Fatalf("Failed to get GCE compute API provider: %v", err.Error())
+		}
+
+		// JULIAN: Seems like I need to get multiple environment support for this?
+		containerProvider, err := gke.NewGKEClusterProvider(ctx, conf, mdService)
+		if err != nil {
+			klog.Fatalf("Failed to get GKE container API provider: %v", err.Error())
+		}
+
 		initialBackoffDuration := time.Duration(*errorBackoffInitialDurationMs) * time.Millisecond
 		maxBackoffDuration := time.Duration(*errorBackoffMaxDurationMs) * time.Millisecond
+
 		args := &driver.GCEControllerServerArgs{
 			EnableDiskTopology: *diskTopology,
+			ContainerProvider:  containerProvider,
 		}
-		controllerServer = driver.NewControllerServer(gceDriver, cloudProvider, initialBackoffDuration, maxBackoffDuration, fallbackRequisiteZones, *enableStoragePoolsFlag, *enableDataCacheFlag, multiZoneVolumeHandleConfig, listVolumesConfig, provisionableDisksConfig, *enableHdHAFlag, args)
+		controllerServer = driver.NewControllerServer(gceDriver, computeProvider, initialBackoffDuration, maxBackoffDuration, fallbackRequisiteZones, *enableStoragePoolsFlag, *enableDataCacheFlag, multiZoneVolumeHandleConfig, listVolumesConfig, provisionableDisksConfig, *enableHdHAFlag, args)
 	} else if *cloudConfigFilePath != "" {
 		klog.Warningf("controller service is disabled but cloud config given - it has no effect")
 	}
@@ -249,10 +271,6 @@ func handle() {
 
 		deviceUtils := deviceutils.NewDeviceUtils()
 		statter := mountmanager.NewStatter(mounter)
-		meta, err := metadataservice.NewMetadataService()
-		if err != nil {
-			klog.Fatalf("Failed to set up metadata service: %v", err.Error())
-		}
 		isDataCacheEnabledNodePool, err := isDataCacheEnabledNodePool(ctx, *nodeName)
 		if err != nil {
 			klog.Fatalf("Failed to get node info from API server: %v", err.Error())
@@ -275,7 +293,7 @@ func handle() {
 			nsArgs.KubeClient = kubeClient
 		}
 
-		nodeServer = driver.NewNodeServer(gceDriver, mounter, deviceUtils, meta, statter, nsArgs)
+		nodeServer = driver.NewNodeServer(gceDriver, mounter, deviceUtils, mdService, statter, nsArgs)
 
 		if *maxConcurrentFormatAndMount > 0 {
 			nodeServer = nodeServer.WithSerializedFormatAndMount(*formatAndMountTimeout, *maxConcurrentFormatAndMount)

@@ -29,8 +29,8 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/gcfg.v1"
 	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/common"
+	"sigs.k8s.io/gcp-compute-persistent-disk-csi-driver/pkg/gce-cloud-provider/auth"
 
-	"cloud.google.com/go/compute/metadata"
 	rscmgr "cloud.google.com/go/resourcemanager/apiv3"
 	"golang.org/x/oauth2"
 	computebeta "google.golang.org/api/compute/v0.beta"
@@ -84,10 +84,10 @@ var (
 	imagesType ResourceType = "images"
 )
 
-// CloudProvider only supports GCE v1/beta Disk APIs. See
+// ComputeProvider only supports GCE v1/beta Disk APIs. See
 // https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver/pull/1524
 // for how to add GCE alpha Disk support.
-type CloudProvider struct {
+type ComputeProvider struct {
 	service     *compute.Service
 	betaService *computebeta.Service
 	tokenSource oauth2.TokenSource
@@ -105,7 +105,7 @@ type CloudProvider struct {
 	enableHdHA bool
 }
 
-var _ GCECompute = &CloudProvider{}
+var _ GCECompute = &ComputeProvider{}
 
 type ConfigFile struct {
 	Global ConfigGlobal `gcfg:"global"`
@@ -133,44 +133,25 @@ type ConfigGlobal struct {
 	Zone      string `gcfg:"zone"`
 }
 
-func CreateCloudProvider(ctx context.Context, vendorVersion string, configPath string, computeEndpoint *url.URL, computeEnvironment Environment, waitForAttachConfig WaitForAttachConfig, listInstancesConfig ListInstancesConfig) (*CloudProvider, error) {
-	configFile, err := readConfig(configPath)
-	if err != nil {
-		return nil, err
-	}
-	// At this point configFile could still be nil.
-	// Any following code that uses configFile should handle nil pointer gracefully.
-
-	klog.V(2).Infof("Using GCE provider config %+v", configFile)
-
-	tokenSource, err := generateTokenSource(ctx, configFile)
-	if err != nil {
-		return nil, err
-	}
-
-	svc, err := createCloudService(ctx, vendorVersion, tokenSource, computeEndpoint, computeEnvironment)
+func CreateComputeProvider(ctx context.Context, vendorVersion string, conf *auth.AuthConfig, computeEndpoint *url.URL, computeEnvironment Environment, waitForAttachConfig WaitForAttachConfig, listInstancesConfig ListInstancesConfig) (*ComputeProvider, error) {
+	svc, err := createComputeService(ctx, vendorVersion, conf.Token, computeEndpoint, computeEnvironment)
 	if err != nil {
 		return nil, err
 	}
 	klog.Infof("Compute endpoint for V1 version: %s", svc.BasePath)
 
-	betasvc, err := createBetaCloudService(ctx, vendorVersion, tokenSource, computeEndpoint, computeEnvironment)
+	betasvc, err := createBetaComputeService(ctx, vendorVersion, conf.Token, computeEndpoint, computeEnvironment)
 	if err != nil {
 		return nil, err
 	}
 	klog.Infof("Compute endpoint for Beta version: %s", betasvc.BasePath)
 
-	project, zone, err := getProjectAndZone(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("Failed getting Project and Zone: %w", err)
-	}
-
-	return &CloudProvider{
+	return &ComputeProvider{
 		service:             svc,
 		betaService:         betasvc,
-		tokenSource:         tokenSource,
-		project:             project,
-		zone:                zone,
+		tokenSource:         conf.Token,
+		project:             conf.Project,
+		zone:                conf.Zone,
 		zonesCache:          make(map[string]([]string)),
 		waitForAttachConfig: waitForAttachConfig,
 		listInstancesConfig: listInstancesConfig,
@@ -227,7 +208,7 @@ func readConfig(configPath string) (*ConfigFile, error) {
 	return cfg, nil
 }
 
-func createBetaCloudService(ctx context.Context, vendorVersion string, tokenSource oauth2.TokenSource, computeEndpoint *url.URL, computeEnvironment Environment) (*computebeta.Service, error) {
+func createBetaComputeService(ctx context.Context, vendorVersion string, tokenSource oauth2.TokenSource, computeEndpoint *url.URL, computeEnvironment Environment) (*computebeta.Service, error) {
 	computeOpts, err := getComputeVersion(ctx, tokenSource, computeEndpoint, computeEnvironment, GCEAPIVersionBeta)
 	if err != nil {
 		klog.Errorf("Failed to get compute endpoint: %s", err)
@@ -240,7 +221,7 @@ func createBetaCloudService(ctx context.Context, vendorVersion string, tokenSour
 	return service, nil
 }
 
-func createCloudService(ctx context.Context, vendorVersion string, tokenSource oauth2.TokenSource, computeEndpoint *url.URL, computeEnvironment Environment) (*compute.Service, error) {
+func createComputeService(ctx context.Context, vendorVersion string, tokenSource oauth2.TokenSource, computeEndpoint *url.URL, computeEnvironment Environment) (*compute.Service, error) {
 	computeOpts, err := getComputeVersion(ctx, tokenSource, computeEndpoint, computeEnvironment, GCEAPIVersionV1)
 	if err != nil {
 		klog.Errorf("Failed to get compute endpoint: %s", err)
@@ -322,39 +303,6 @@ func newOauthClient(ctx context.Context, tokenSource oauth2.TokenSource) (*http.
 	}
 
 	return oauth2.NewClient(ctx, tokenSource), nil
-}
-
-func getProjectAndZone(config *ConfigFile) (string, string, error) {
-	var err error
-
-	var zone string
-	if config == nil || config.Global.Zone == "" {
-		zone, err = metadata.Zone()
-		if err != nil {
-			return "", "", err
-		}
-		klog.V(2).Infof("Using GCP zone from the Metadata server: %q", zone)
-	} else {
-		zone = config.Global.Zone
-		klog.V(2).Infof("Using GCP zone from the local GCE cloud provider config file: %q", zone)
-	}
-
-	var projectID string
-	if config == nil || config.Global.ProjectId == "" {
-		// Project ID is not available from the local GCE cloud provider config file.
-		// This could happen if the driver is not running in the master VM.
-		// Defaulting to project ID from the Metadata server.
-		projectID, err = metadata.ProjectID()
-		if err != nil {
-			return "", "", err
-		}
-		klog.V(2).Infof("Using GCP project ID from the Metadata server: %q", projectID)
-	} else {
-		projectID = config.Global.ProjectId
-		klog.V(2).Infof("Using GCP project ID from the local GCE cloud provider config file: %q", projectID)
-	}
-
-	return projectID, zone, nil
 }
 
 // isGCEError returns true if given error is a googleapi.Error with given

@@ -3067,12 +3067,12 @@ func TestCreateVolumeWithVolumeSourceFromSnapshot(t *testing.T) {
 		case common.DiskSnapshotType:
 			snapshotID = testSnapshotID
 			if tc.snapshotOnCloud {
-				gceDriver.cs.CloudProvider.CreateSnapshot(context.Background(), tc.project, tc.volKey, name, snapshotParams)
+				gceDriver.cs.ComputeProvider.CreateSnapshot(context.Background(), tc.project, tc.volKey, name, snapshotParams)
 			}
 		case common.DiskImageType:
 			snapshotID = testImageID
 			if tc.snapshotOnCloud {
-				gceDriver.cs.CloudProvider.CreateImage(context.Background(), tc.project, tc.volKey, name, snapshotParams)
+				gceDriver.cs.ComputeProvider.CreateImage(context.Background(), tc.project, tc.volKey, name, snapshotParams)
 			}
 		default:
 			t.Errorf("Unknown snapshot type: %v", tc.snapshotType)
@@ -5470,7 +5470,7 @@ func TestControllerPublishBackoff(t *testing.T) {
 			}
 
 			if tc.forceAttach {
-				instance, err := driver.cs.CloudProvider.GetInstanceOrError(context.Background(), zone, node)
+				instance, err := driver.cs.ComputeProvider.GetInstanceOrError(context.Background(), zone, node)
 				if err != nil {
 					t.Fatalf("%s instance not found: %v", node, err)
 				}
@@ -5746,9 +5746,9 @@ func backoffDriver(t *testing.T, config *backoffDriverConfig) *GCEDriver {
 		errorBackoff:      newFakeCSIErrorBackoff(config.clock),
 	}
 
-	driver.cs.CloudProvider = fcp
+	driver.cs.ComputeProvider = fcp
 	if config.readyToExecute != nil {
-		driver.cs.CloudProvider = &gce.FakeBlockingCloudProvider{
+		driver.cs.ComputeProvider = &gce.FakeBlockingCloudProvider{
 			FakeCloudProvider: fcp,
 			ReadyToExecute:    config.readyToExecute,
 		}

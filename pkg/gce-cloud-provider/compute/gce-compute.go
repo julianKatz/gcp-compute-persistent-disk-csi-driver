@@ -131,27 +131,27 @@ type GCECompute interface {
 }
 
 // GetDefaultProject returns the project that was used to instantiate this GCE client.
-func (cloud *CloudProvider) GetDefaultProject() string {
+func (cloud *ComputeProvider) GetDefaultProject() string {
 	return cloud.project
 }
 
 // GetDefaultZone returns the zone that was used to instantiate this GCE client.
-func (cloud *CloudProvider) GetDefaultZone() string {
+func (cloud *ComputeProvider) GetDefaultZone() string {
 	return cloud.zone
 }
 
 // ListDisks lists disks based on maxEntries and pageToken only in the project
 // and region that the driver is running in.
-func (cloud *CloudProvider) ListDisks(ctx context.Context, fields []googleapi.Field) ([]*computev1.Disk, string, error) {
+func (cloud *ComputeProvider) ListDisks(ctx context.Context, fields []googleapi.Field) ([]*computev1.Disk, string, error) {
 	filter := ""
 	return cloud.listDisksInternal(ctx, fields, filter)
 }
 
-func (cloud *CloudProvider) ListDisksWithFilter(ctx context.Context, fields []googleapi.Field, filter string) ([]*computev1.Disk, string, error) {
+func (cloud *ComputeProvider) ListDisksWithFilter(ctx context.Context, fields []googleapi.Field, filter string) ([]*computev1.Disk, string, error) {
 	return cloud.listDisksInternal(ctx, fields, filter)
 }
 
-func (cloud *CloudProvider) listDisksInternal(ctx context.Context, fields []googleapi.Field, filter string) ([]*computev1.Disk, string, error) {
+func (cloud *ComputeProvider) listDisksInternal(ctx context.Context, fields []googleapi.Field, filter string) ([]*computev1.Disk, string, error) {
 	region, err := common.GetRegionFromZones([]string{cloud.zone})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get region from zones: %w", err)
@@ -199,7 +199,7 @@ func (cloud *CloudProvider) listDisksInternal(ctx context.Context, fields []goog
 // ListInstances lists instances based on maxEntries and pageToken for the project and region
 // that the driver is running in. Filters from cloud.listInstancesConfig.Filters are applied
 // to the request.
-func (cloud *CloudProvider) ListInstances(ctx context.Context, fields []googleapi.Field) ([]*computev1.Instance, string, error) {
+func (cloud *ComputeProvider) ListInstances(ctx context.Context, fields []googleapi.Field) ([]*computev1.Instance, string, error) {
 	region, err := common.GetRegionFromZones([]string{cloud.zone})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get region from zones: %w", err)
@@ -233,7 +233,7 @@ func (cloud *CloudProvider) ListInstances(ctx context.Context, fields []googleap
 
 // RepairUnderspecifiedVolumeKey will query the cloud provider and check each zone for the disk specified
 // by the volume key and return a volume key with a correct zone
-func (cloud *CloudProvider) RepairUnderspecifiedVolumeKey(ctx context.Context, project string, volumeKey *meta.Key) (string, *meta.Key, error) {
+func (cloud *ComputeProvider) RepairUnderspecifiedVolumeKey(ctx context.Context, project string, volumeKey *meta.Key) (string, *meta.Key, error) {
 	klog.V(5).Infof("Repairing potentially underspecified volume key %v", volumeKey)
 	if project == common.UnspecifiedValue {
 		project = cloud.project
@@ -286,7 +286,7 @@ func (cloud *CloudProvider) RepairUnderspecifiedVolumeKey(ctx context.Context, p
 	}
 }
 
-func (cloud *CloudProvider) ListZones(ctx context.Context, region string) ([]string, error) {
+func (cloud *ComputeProvider) ListZones(ctx context.Context, region string) ([]string, error) {
 	klog.V(5).Infof("Listing zones in region: %v", region)
 	if len(cloud.zonesCache[region]) > 0 {
 		return cloud.zonesCache[region], nil
@@ -304,7 +304,7 @@ func (cloud *CloudProvider) ListZones(ctx context.Context, region string) ([]str
 
 }
 
-func (cloud *CloudProvider) ListSnapshots(ctx context.Context, filter string) ([]*computev1.Snapshot, string, error) {
+func (cloud *ComputeProvider) ListSnapshots(ctx context.Context, filter string) ([]*computev1.Snapshot, string, error) {
 	klog.V(5).Infof("Listing snapshots with filter: %s", filter)
 	items := []*computev1.Snapshot{}
 	lCall := cloud.service.Snapshots.List(cloud.project).Filter(filter)
@@ -319,7 +319,7 @@ func (cloud *CloudProvider) ListSnapshots(ctx context.Context, filter string) ([
 	return items, "", nil
 }
 
-func (cloud *CloudProvider) GetDisk(ctx context.Context, project string, key *meta.Key) (*CloudDisk, error) {
+func (cloud *ComputeProvider) GetDisk(ctx context.Context, project string, key *meta.Key) (*CloudDisk, error) {
 	klog.V(5).Infof("Getting disk %v", key)
 
 	switch key.Type() {
@@ -334,7 +334,7 @@ func (cloud *CloudProvider) GetDisk(ctx context.Context, project string, key *me
 	}
 }
 
-func (cloud *CloudProvider) getZonalDiskOrError(ctx context.Context, project, volumeZone, volumeName string) (*computev1.Disk, error) {
+func (cloud *ComputeProvider) getZonalDiskOrError(ctx context.Context, project, volumeZone, volumeName string) (*computev1.Disk, error) {
 	disk, err := cloud.service.Disks.Get(project, volumeZone, volumeName).Context(ctx).Do()
 	if err != nil {
 		return nil, err
@@ -342,7 +342,7 @@ func (cloud *CloudProvider) getZonalDiskOrError(ctx context.Context, project, vo
 	return disk, nil
 }
 
-func (cloud *CloudProvider) getRegionalDiskOrError(ctx context.Context, project, volumeRegion, volumeName string) (*computev1.Disk, error) {
+func (cloud *ComputeProvider) getRegionalDiskOrError(ctx context.Context, project, volumeRegion, volumeName string) (*computev1.Disk, error) {
 	disk, err := cloud.service.RegionDisks.Get(project, volumeRegion, volumeName).Context(ctx).Do()
 	if err != nil {
 		return nil, err
@@ -350,7 +350,7 @@ func (cloud *CloudProvider) getRegionalDiskOrError(ctx context.Context, project,
 	return disk, nil
 }
 
-func (cloud *CloudProvider) getZonalBetaDiskOrError(ctx context.Context, project, volumeZone, volumeName string) (*computebeta.Disk, error) {
+func (cloud *ComputeProvider) getZonalBetaDiskOrError(ctx context.Context, project, volumeZone, volumeName string) (*computebeta.Disk, error) {
 	disk, err := cloud.betaService.Disks.Get(project, volumeZone, volumeName).Context(ctx).Do()
 	if err != nil {
 		return nil, err
@@ -358,7 +358,7 @@ func (cloud *CloudProvider) getZonalBetaDiskOrError(ctx context.Context, project
 	return disk, nil
 }
 
-func (cloud *CloudProvider) getRegionalBetaDiskOrError(ctx context.Context, project, volumeRegion, volumeName string) (*computebeta.Disk, error) {
+func (cloud *ComputeProvider) getRegionalBetaDiskOrError(ctx context.Context, project, volumeRegion, volumeName string) (*computebeta.Disk, error) {
 	disk, err := cloud.betaService.RegionDisks.Get(project, volumeRegion, volumeName).Context(ctx).Do()
 	if err != nil {
 		return nil, err
@@ -366,14 +366,14 @@ func (cloud *CloudProvider) getRegionalBetaDiskOrError(ctx context.Context, proj
 	return disk, nil
 }
 
-func (cloud *CloudProvider) GetReplicaZoneURI(project, zone string) string {
+func (cloud *ComputeProvider) GetReplicaZoneURI(project, zone string) string {
 	return cloud.service.BasePath + fmt.Sprintf(
 		replicaZoneURITemplateSingleZone,
 		project,
 		zone)
 }
 
-func (cloud *CloudProvider) getRegionURI(project, region string) string {
+func (cloud *ComputeProvider) getRegionURI(project, region string) string {
 	return cloud.service.BasePath + fmt.Sprintf(
 		regionURITemplate,
 		project,
@@ -439,7 +439,7 @@ func ValidateDiskParameters(disk *CloudDisk, params common.DiskParameters) error
 	return nil
 }
 
-func (cloud *CloudProvider) InsertDisk(ctx context.Context, project string, volKey *meta.Key, params common.DiskParameters, capBytes int64, capacityRange *csi.CapacityRange, replicaZones []string, snapshotID string, volumeContentSourceVolumeID string, multiWriter bool, accessMode string) error {
+func (cloud *ComputeProvider) InsertDisk(ctx context.Context, project string, volKey *meta.Key, params common.DiskParameters, capBytes int64, capacityRange *csi.CapacityRange, replicaZones []string, snapshotID string, volumeContentSourceVolumeID string, multiWriter bool, accessMode string) error {
 	klog.V(5).Infof("Inserting disk %v", volKey)
 
 	description, err := encodeTags(params.Tags)
@@ -471,7 +471,7 @@ func (cloud *CloudProvider) InsertDisk(ctx context.Context, project string, volK
 	return cloud.insertConstructedDisk(ctx, diskToCreate, isZonal, project, volKey, params, capacityRange, multiWriter, accessMode)
 }
 
-func (cloud *CloudProvider) constructDiskToCreate(
+func (cloud *ComputeProvider) constructDiskToCreate(
 	ctx context.Context,
 	project string,
 	volKey *meta.Key,
@@ -561,7 +561,7 @@ func (cloud *CloudProvider) constructDiskToCreate(
 	return diskToCreate, nil
 }
 
-func (cloud *CloudProvider) processDiskAlreadyExistErr(ctx context.Context, err error, project string, volKey *meta.Key, params common.DiskParameters, capacityRange *csi.CapacityRange, multiWriter bool, accessMode string) error {
+func (cloud *ComputeProvider) processDiskAlreadyExistErr(ctx context.Context, err error, project string, volKey *meta.Key, params common.DiskParameters, capacityRange *csi.CapacityRange, multiWriter bool, accessMode string) error {
 	if err == nil {
 		return nil
 	}
@@ -585,7 +585,7 @@ func (cloud *CloudProvider) processDiskAlreadyExistErr(ctx context.Context, err 
 	return err
 }
 
-func (cloud *CloudProvider) insertConstructedDisk(ctx context.Context, disk *computebeta.Disk, isZonal bool, project string, volKey *meta.Key, params common.DiskParameters, capacityRange *csi.CapacityRange, multiWriter bool, accessMode string) error {
+func (cloud *ComputeProvider) insertConstructedDisk(ctx context.Context, disk *computebeta.Disk, isZonal bool, project string, volKey *meta.Key, params common.DiskParameters, capacityRange *csi.CapacityRange, multiWriter bool, accessMode string) error {
 	var (
 		insertOp *computebeta.Operation
 		opName   string
@@ -621,7 +621,7 @@ func (cloud *CloudProvider) insertConstructedDisk(ctx context.Context, disk *com
 	return nil
 }
 
-func (cloud *CloudProvider) UpdateDisk(ctx context.Context, project string, volKey *meta.Key, existingDisk *CloudDisk, params common.ModifyVolumeParameters) error {
+func (cloud *ComputeProvider) UpdateDisk(ctx context.Context, project string, volKey *meta.Key, existingDisk *CloudDisk, params common.ModifyVolumeParameters) error {
 	// hyperdisks are zonal disks
 	// pd-disks do not support modification of IOPS and Throughput
 	if volKey.Type() == meta.Regional {
@@ -631,7 +631,7 @@ func (cloud *CloudProvider) UpdateDisk(ctx context.Context, project string, volK
 	return cloud.updateZonalDisk(ctx, project, volKey, existingDisk, params)
 }
 
-func (cloud *CloudProvider) updateZonalDisk(ctx context.Context, project string, volKey *meta.Key, existingDisk *CloudDisk, params common.ModifyVolumeParameters) error {
+func (cloud *ComputeProvider) updateZonalDisk(ctx context.Context, project string, volKey *meta.Key, existingDisk *CloudDisk, params common.ModifyVolumeParameters) error {
 	specifiedIops := params.IOPS != nil && *params.IOPS != 0
 	specifiedThroughput := params.Throughput != nil && *params.Throughput != 0
 	if !specifiedIops && !specifiedThroughput {
@@ -788,7 +788,7 @@ func convertBetaDiskToV1Disk(betaDisk *computebeta.Disk) *computev1.Disk {
 	return v1Disk
 }
 
-func (cloud *CloudProvider) DeleteDisk(ctx context.Context, project string, volKey *meta.Key) error {
+func (cloud *ComputeProvider) DeleteDisk(ctx context.Context, project string, volKey *meta.Key) error {
 	klog.V(5).Infof("Deleting disk: %v", volKey)
 	switch volKey.Type() {
 	case meta.Zonal:
@@ -800,7 +800,7 @@ func (cloud *CloudProvider) DeleteDisk(ctx context.Context, project string, volK
 	}
 }
 
-func (cloud *CloudProvider) deleteZonalDisk(ctx context.Context, project, zone, name string) error {
+func (cloud *ComputeProvider) deleteZonalDisk(ctx context.Context, project, zone, name string) error {
 	op, err := cloud.service.Disks.Delete(project, zone, name).Context(ctx).Do()
 	if err != nil {
 		if IsGCEError(err, "notFound") {
@@ -818,7 +818,7 @@ func (cloud *CloudProvider) deleteZonalDisk(ctx context.Context, project, zone, 
 	return nil
 }
 
-func (cloud *CloudProvider) deleteRegionalDisk(ctx context.Context, project, region, name string) error {
+func (cloud *ComputeProvider) deleteRegionalDisk(ctx context.Context, project, region, name string) error {
 	op, err := cloud.service.RegionDisks.Delete(project, region, name).Context(ctx).Do()
 	if err != nil {
 		if IsGCEError(err, "notFound") {
@@ -836,7 +836,7 @@ func (cloud *CloudProvider) deleteRegionalDisk(ctx context.Context, project, reg
 	return nil
 }
 
-func (cloud *CloudProvider) AttachDisk(ctx context.Context, project string, volKey *meta.Key, readWrite, diskType, instanceZone, instanceName string, forceAttach bool) error {
+func (cloud *ComputeProvider) AttachDisk(ctx context.Context, project string, volKey *meta.Key, readWrite, diskType, instanceZone, instanceName string, forceAttach bool) error {
 	klog.V(5).Infof("Attaching disk %v to %s", volKey, instanceName)
 	source := cloud.GetDiskSourceURI(project, volKey)
 
@@ -869,7 +869,7 @@ func (cloud *CloudProvider) AttachDisk(ctx context.Context, project string, volK
 	return nil
 }
 
-func (cloud *CloudProvider) DetachDisk(ctx context.Context, project, deviceName, instanceZone, instanceName string) error {
+func (cloud *ComputeProvider) DetachDisk(ctx context.Context, project, deviceName, instanceZone, instanceName string) error {
 	klog.V(5).Infof("Detaching disk %v from %v", deviceName, instanceName)
 	op, err := cloud.service.Instances.DetachDisk(project, instanceZone, instanceName, deviceName).Context(ctx).Do()
 	if err != nil {
@@ -884,7 +884,7 @@ func (cloud *CloudProvider) DetachDisk(ctx context.Context, project, deviceName,
 	return nil
 }
 
-func (cloud *CloudProvider) SetDiskAccessMode(ctx context.Context, project string, volKey *meta.Key, accessMode string) error {
+func (cloud *ComputeProvider) SetDiskAccessMode(ctx context.Context, project string, volKey *meta.Key, accessMode string) error {
 	diskMask := &computev1.Disk{
 		AccessMode: accessMode,
 		Name:       volKey.Name,
@@ -919,7 +919,7 @@ func (cloud *CloudProvider) SetDiskAccessMode(ctx context.Context, project strin
 	return nil
 }
 
-func (cloud *CloudProvider) ListCompatibleDiskTypeZones(ctx context.Context, project string, zones []string, diskType string) ([]string, error) {
+func (cloud *ComputeProvider) ListCompatibleDiskTypeZones(ctx context.Context, project string, zones []string, diskType string) ([]string, error) {
 	diskTypeFilter := fmt.Sprintf("name=%s", diskType)
 	filters := []string{diskTypeFilter}
 	diskTypeListCall := cloud.service.DiskTypes.AggregatedList(project).Context(ctx).Filter(strings.Join(filters, " "))
@@ -951,7 +951,7 @@ func (cloud *CloudProvider) ListCompatibleDiskTypeZones(ctx context.Context, pro
 	return supportedZones, nil
 }
 
-func (cloud *CloudProvider) GetDiskSourceURI(project string, volKey *meta.Key) string {
+func (cloud *ComputeProvider) GetDiskSourceURI(project string, volKey *meta.Key) string {
 	switch volKey.Type() {
 	case meta.Zonal:
 		return cloud.getZonalDiskSourceURI(project, volKey.Name, volKey.Zone)
@@ -962,7 +962,7 @@ func (cloud *CloudProvider) GetDiskSourceURI(project string, volKey *meta.Key) s
 	}
 }
 
-func (cloud *CloudProvider) getZonalDiskSourceURI(project, diskName, zone string) string {
+func (cloud *ComputeProvider) getZonalDiskSourceURI(project, diskName, zone string) string {
 	return cloud.service.BasePath + fmt.Sprintf(
 		diskSourceURITemplateSingleZone,
 		project,
@@ -970,7 +970,7 @@ func (cloud *CloudProvider) getZonalDiskSourceURI(project, diskName, zone string
 		diskName)
 }
 
-func (cloud *CloudProvider) getRegionalDiskSourceURI(project, diskName, region string) string {
+func (cloud *ComputeProvider) getRegionalDiskSourceURI(project, diskName, region string) string {
 	return cloud.service.BasePath + fmt.Sprintf(
 		diskSourceURITemplateRegional,
 		project,
@@ -978,7 +978,7 @@ func (cloud *CloudProvider) getRegionalDiskSourceURI(project, diskName, region s
 		diskName)
 }
 
-func (cloud *CloudProvider) GetDiskTypeURI(project string, volKey *meta.Key, diskType string) string {
+func (cloud *ComputeProvider) GetDiskTypeURI(project string, volKey *meta.Key, diskType string) string {
 	switch volKey.Type() {
 	case meta.Zonal:
 		return cloud.getZonalDiskTypeURI(project, volKey.Zone, diskType)
@@ -989,15 +989,15 @@ func (cloud *CloudProvider) GetDiskTypeURI(project string, volKey *meta.Key, dis
 	}
 }
 
-func (cloud *CloudProvider) getZonalDiskTypeURI(project string, zone, diskType string) string {
+func (cloud *ComputeProvider) getZonalDiskTypeURI(project string, zone, diskType string) string {
 	return cloud.service.BasePath + fmt.Sprintf(diskTypeURITemplateSingleZone, project, zone, diskType)
 }
 
-func (cloud *CloudProvider) getRegionalDiskTypeURI(project string, region, diskType string) string {
+func (cloud *ComputeProvider) getRegionalDiskTypeURI(project string, region, diskType string) string {
 	return cloud.service.BasePath + fmt.Sprintf(diskTypeURITemplateRegional, project, region, diskType)
 }
 
-func (cloud *CloudProvider) waitForZonalOp(ctx context.Context, project, opName string, zone string) error {
+func (cloud *ComputeProvider) waitForZonalOp(ctx context.Context, project, opName string, zone string) error {
 	// The v1 API can query for v1, alpha, or beta operations.
 	return wait.ExponentialBackoff(WaitForOpBackoff, func() (bool, error) {
 		pollOp, err := cloud.service.ZoneOperations.Get(project, zone, opName).Context(ctx).Do()
@@ -1010,7 +1010,7 @@ func (cloud *CloudProvider) waitForZonalOp(ctx context.Context, project, opName 
 	})
 }
 
-func (cloud *CloudProvider) waitForRegionalOp(ctx context.Context, project, opName string, region string) error {
+func (cloud *ComputeProvider) waitForRegionalOp(ctx context.Context, project, opName string, region string) error {
 	// The v1 API can query for v1, alpha, or beta operations.
 	return wait.ExponentialBackoff(WaitForOpBackoff, func() (bool, error) {
 		pollOp, err := cloud.service.RegionOperations.Get(project, region, opName).Context(ctx).Do()
@@ -1023,7 +1023,7 @@ func (cloud *CloudProvider) waitForRegionalOp(ctx context.Context, project, opNa
 	})
 }
 
-func (cloud *CloudProvider) waitForGlobalOp(ctx context.Context, project, opName string) error {
+func (cloud *ComputeProvider) waitForGlobalOp(ctx context.Context, project, opName string) error {
 	return wait.ExponentialBackoff(WaitForOpBackoff, func() (bool, error) {
 		pollOp, err := cloud.service.GlobalOperations.Get(project, opName).Context(ctx).Do()
 		if err != nil {
@@ -1035,7 +1035,7 @@ func (cloud *CloudProvider) waitForGlobalOp(ctx context.Context, project, opName
 	})
 }
 
-func (cloud *CloudProvider) waitForAttachOnInstance(ctx context.Context, project string, volKey *meta.Key, instanceZone, instanceName string) error {
+func (cloud *ComputeProvider) waitForAttachOnInstance(ctx context.Context, project string, volKey *meta.Key, instanceZone, instanceName string) error {
 	klog.V(5).Infof("Waiting for attach of disk %v to instance %v to complete...", volKey.Name, instanceName)
 	start := time.Now()
 	return wait.ExponentialBackoff(AttachDiskBackoff, func() (bool, error) {
@@ -1063,7 +1063,7 @@ func (cloud *CloudProvider) waitForAttachOnInstance(ctx context.Context, project
 	})
 }
 
-func (cloud *CloudProvider) waitForAttachOnDisk(ctx context.Context, project string, volKey *meta.Key, instanceZone, instanceName string) error {
+func (cloud *ComputeProvider) waitForAttachOnDisk(ctx context.Context, project string, volKey *meta.Key, instanceZone, instanceName string) error {
 	klog.V(5).Infof("Waiting for attach of disk %v to instance %v to complete...", volKey.Name, instanceName)
 	start := time.Now()
 	return wait.ExponentialBackoff(AttachDiskBackoff, func() (bool, error) {
@@ -1086,7 +1086,7 @@ func (cloud *CloudProvider) waitForAttachOnDisk(ctx context.Context, project str
 	})
 }
 
-func (cloud *CloudProvider) WaitForAttach(ctx context.Context, project string, volKey *meta.Key, diskType, instanceZone, instanceName string) error {
+func (cloud *ComputeProvider) WaitForAttach(ctx context.Context, project string, volKey *meta.Key, diskType, instanceZone, instanceName string) error {
 	if cloud.waitForAttachConfig.ShouldUseGetInstanceAPI(diskType) {
 		return cloud.waitForAttachOnInstance(ctx, project, volKey, instanceZone, instanceName)
 	} else {
@@ -1144,7 +1144,7 @@ func opIsDone(op *computev1.Operation) (bool, error) {
 	return true, nil
 }
 
-func (cloud *CloudProvider) GetInstanceOrError(ctx context.Context, instanceZone, instanceName string) (*computev1.Instance, error) {
+func (cloud *ComputeProvider) GetInstanceOrError(ctx context.Context, instanceZone, instanceName string) (*computev1.Instance, error) {
 	klog.V(5).Infof("Getting instance %v from zone %v", instanceName, instanceZone)
 	project := cloud.project
 	instance, err := cloud.service.Instances.Get(project, instanceZone, instanceName).Do()
@@ -1154,7 +1154,7 @@ func (cloud *CloudProvider) GetInstanceOrError(ctx context.Context, instanceZone
 	return instance, nil
 }
 
-func (cloud *CloudProvider) GetSnapshot(ctx context.Context, project, snapshotName string) (*computev1.Snapshot, error) {
+func (cloud *ComputeProvider) GetSnapshot(ctx context.Context, project, snapshotName string) (*computev1.Snapshot, error) {
 	klog.V(5).Infof("Getting snapshot %v", snapshotName)
 	snapshot, err := cloud.service.Snapshots.Get(project, snapshotName).Context(ctx).Do()
 	if err != nil {
@@ -1164,7 +1164,7 @@ func (cloud *CloudProvider) GetSnapshot(ctx context.Context, project, snapshotNa
 	return snapshot, nil
 }
 
-func (cloud *CloudProvider) DeleteSnapshot(ctx context.Context, project, snapshotName string) error {
+func (cloud *ComputeProvider) DeleteSnapshot(ctx context.Context, project, snapshotName string) error {
 	klog.V(5).Infof("Deleting snapshot %v", snapshotName)
 	op, err := cloud.service.Snapshots.Delete(project, snapshotName).Context(ctx).Do()
 	if err != nil {
@@ -1181,7 +1181,7 @@ func (cloud *CloudProvider) DeleteSnapshot(ctx context.Context, project, snapsho
 	return nil
 }
 
-func (cloud *CloudProvider) CreateSnapshot(ctx context.Context, project string, volKey *meta.Key, snapshotName string, snapshotParams common.SnapshotParameters) (*computev1.Snapshot, error) {
+func (cloud *ComputeProvider) CreateSnapshot(ctx context.Context, project string, volKey *meta.Key, snapshotName string, snapshotParams common.SnapshotParameters) (*computev1.Snapshot, error) {
 	klog.V(5).Infof("Creating snapshot %s for volume %v", snapshotName, volKey)
 
 	description, err := encodeTags(snapshotParams.Tags)
@@ -1224,7 +1224,7 @@ func (cloud *CloudProvider) CreateSnapshot(ctx context.Context, project string, 
 	return snapshot, err
 }
 
-func (cloud *CloudProvider) CreateImage(ctx context.Context, project string, volKey *meta.Key, imageName string, snapshotParams common.SnapshotParameters) (*computev1.Image, error) {
+func (cloud *ComputeProvider) CreateImage(ctx context.Context, project string, volKey *meta.Key, imageName string, snapshotParams common.SnapshotParameters) (*computev1.Image, error) {
 	klog.V(5).Infof("Creating image %s for source %v", imageName, volKey)
 
 	description, err := encodeTags(snapshotParams.Tags)
@@ -1263,7 +1263,7 @@ func (cloud *CloudProvider) CreateImage(ctx context.Context, project string, vol
 	return newImage, err
 }
 
-func (cloud *CloudProvider) waitForImageCreation(ctx context.Context, project, imageName string) (*computev1.Image, error) {
+func (cloud *ComputeProvider) waitForImageCreation(ctx context.Context, project, imageName string) (*computev1.Image, error) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	timer := time.NewTimer(waitForImageCreationTimeOut)
@@ -1290,7 +1290,7 @@ func (cloud *CloudProvider) waitForImageCreation(ctx context.Context, project, i
 	}
 }
 
-func (cloud *CloudProvider) GetImage(ctx context.Context, project, imageName string) (*computev1.Image, error) {
+func (cloud *ComputeProvider) GetImage(ctx context.Context, project, imageName string) (*computev1.Image, error) {
 	klog.V(5).Infof("Getting image %v", imageName)
 	image, err := cloud.service.Images.Get(project, imageName).Context(ctx).Do()
 	if err != nil {
@@ -1299,7 +1299,7 @@ func (cloud *CloudProvider) GetImage(ctx context.Context, project, imageName str
 	return image, nil
 }
 
-func (cloud *CloudProvider) ListImages(ctx context.Context, filter string) ([]*computev1.Image, string, error) {
+func (cloud *ComputeProvider) ListImages(ctx context.Context, filter string) ([]*computev1.Image, string, error) {
 	klog.V(5).Infof("Listing images with filter: %s", filter)
 	var items []*computev1.Image
 	lCall := cloud.service.Images.List(cloud.project).Context(ctx).Filter(filter)
@@ -1314,7 +1314,7 @@ func (cloud *CloudProvider) ListImages(ctx context.Context, filter string) ([]*c
 	return items, "", nil
 }
 
-func (cloud *CloudProvider) DeleteImage(ctx context.Context, project, imageName string) error {
+func (cloud *ComputeProvider) DeleteImage(ctx context.Context, project, imageName string) error {
 	klog.V(5).Infof("Deleting image %v", imageName)
 	op, err := cloud.service.Images.Delete(cloud.project, imageName).Context(ctx).Do()
 	if err != nil {
@@ -1334,7 +1334,7 @@ func (cloud *CloudProvider) DeleteImage(ctx context.Context, project, imageName 
 // size in Gi
 // TODO(#461) The whole driver could benefit from standardized usage of the
 // k8s.io/apimachinery/quantity package for better size handling
-func (cloud *CloudProvider) ResizeDisk(ctx context.Context, project string, volKey *meta.Key, requestBytes int64) (int64, error) {
+func (cloud *ComputeProvider) ResizeDisk(ctx context.Context, project string, volKey *meta.Key, requestBytes int64) (int64, error) {
 	klog.V(5).Infof("Resizing disk %v to size %v", volKey, requestBytes)
 	cloudDisk, err := cloud.GetDisk(ctx, project, volKey)
 	if err != nil {
@@ -1360,7 +1360,7 @@ func (cloud *CloudProvider) ResizeDisk(ctx context.Context, project string, volK
 	}
 }
 
-func (cloud *CloudProvider) resizeZonalDisk(ctx context.Context, project string, volKey *meta.Key, requestGb int64) (int64, error) {
+func (cloud *ComputeProvider) resizeZonalDisk(ctx context.Context, project string, volKey *meta.Key, requestGb int64) (int64, error) {
 	resizeReq := &computev1.DisksResizeRequest{
 		SizeGb: requestGb,
 	}
@@ -1378,7 +1378,7 @@ func (cloud *CloudProvider) resizeZonalDisk(ctx context.Context, project string,
 	return requestGb, nil
 }
 
-func (cloud *CloudProvider) resizeRegionalDisk(ctx context.Context, project string, volKey *meta.Key, requestGb int64) (int64, error) {
+func (cloud *ComputeProvider) resizeRegionalDisk(ctx context.Context, project string, volKey *meta.Key, requestGb int64) (int64, error) {
 	resizeReq := &computev1.RegionDisksResizeRequest{
 		SizeGb: requestGb,
 	}
@@ -1397,7 +1397,7 @@ func (cloud *CloudProvider) resizeRegionalDisk(ctx context.Context, project stri
 	return requestGb, nil
 }
 
-func (cloud *CloudProvider) waitForSnapshotCreation(ctx context.Context, project, snapshotName string) (*computev1.Snapshot, error) {
+func (cloud *ComputeProvider) waitForSnapshotCreation(ctx context.Context, project, snapshotName string) (*computev1.Snapshot, error) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	timer := time.NewTimer(waitForSnapshotCreationTimeOut)
@@ -1508,7 +1508,7 @@ func getFilteredTagsMap(ctx context.Context, client *rscmgr.TagBindingsClient, p
 // requests per minute, the tags list is filtered so that only the tags which are not attached
 // to the resource are attached. The calls to create the tag binding resource for the tags are
 // rate limited to 8 requests per second.
-func (cloud *CloudProvider) attachTagsToResource(
+func (cloud *ComputeProvider) attachTagsToResource(
 	ctx context.Context,
 	tagsMap map[string]string,
 	project string,

@@ -106,6 +106,10 @@ func NewDeviceUtils() *deviceUtils {
 	return &deviceUtils{}
 }
 
+func (m *deviceUtils) IsDeviceFilesystemInUse(mounter *mount.SafeFormatAndMount, devicePath, devFsPath string) (bool, error) {
+	return false, nil
+}
+
 // Returns list of all /dev/disk/by-id/* paths for given PD.
 func (m *deviceUtils) GetDiskByIdPaths(deviceName string, partition string) []string {
 	devicePaths := []string{
